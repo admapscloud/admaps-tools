@@ -12,6 +12,8 @@
 // A window is any wall with sight «Proximity» (PROXIMITY; core's «Window» tool makes those), whatever its
 // threshold in feet — the user: «any values in feet, what matters is Proximity». Invisible walls (sight NONE)
 // are railings and props: counting them would bare the strip in front of the wall again.
+// A sight wall whose top (wall-height) is below the token's eyes is an opening for that token as well — it looks
+// over the wall (27.09.2026, City Gate: a bridge at 15 entering a tower over the gate's wall 0–15).
 //
 // STORAGE. Core FADE + flags.adm-levels.partialFade: core validates occlusion.mode against its own list, a new
 // number would not save. The extra <option> submits FADE as well; a hidden checkbox tells the two apart.
@@ -141,6 +143,17 @@ function _isDoorOrWindow(doc) {
     return (doc.door !== CONST.WALL_DOOR_TYPES.SECRET) || (doc.ds === CONST.WALL_DOOR_STATES.OPEN);
   }
   return doc.sight === S.PROXIMITY;
+}
+
+/** A sight wall whose top is below the eye: the token looks over it (wall-height), so for this token it is an
+ *  opening along its whole length, like an open door (27.09.2026, City Gate: the bridge at 15 runs into the tower
+ *  through a gap over the gate's wall 0–15 — «it takes this wall as solid, though I'm above it and it does not
+ *  stop my walk»). Invisible walls stay out, as with windows. A wall wholly ABOVE the eye stays out too: looking
+ *  under a wall of the floor above would bare that floor's art. `eye = Infinity` asks «can it ever be one»
+ *  (a finite top). */
+function _belowEye(doc, eye) {
+  if (doc.sight === CONST.WALL_SENSE_TYPES.NONE) return false;
+  return _bound(doc?.flags?.["wall-height"]?.top, Infinity) < eye;
 }
 
 /** Does the roof cover the door (its midpoint, or a point a little to either side — doors sit on the roof edge)? */
@@ -516,6 +529,35 @@ function _tickHide() {
       next.set(t.id, Math.min(next.get(t.id) ?? 1, f));
     }
   }
+  // Plain «Fade» tiles as well (27.09.2026, City Gate: hovered from below, the bridge faded and Lilith standing on it
+  // hung in the air — «shouldn't we hide Lilith too?»). Core fades such a tile whole (fade channel: a token under
+  // it, or hover with nobody's vision) or by hover within the sight of the tokens below it (vision channel) — a
+  // token on the tile or above it goes by that amount. Only tiles fading right now are looked at.
+  if (onRoof) {
+    const FADE = CONST.OCCLUSION_MODES.FADE;
+    let viewers = null;
+    for (const tile of canvas.tiles?.placeables ?? []) {
+      const doc = tile.document;
+      if ((doc.occlusion?.mode !== FADE) || _isPartial(doc)) continue;
+      const mesh = tile.mesh;
+      const st = mesh?._occlusionState;
+      if (!st || ((st.fade < 0.01) && (st.vision < 0.01)) || !tile.visible || !mesh.visible) continue;
+      const z = Number(doc.elevation) || 0;
+      viewers ??= (canvas.tokens?._getOccludableTokens?.() ?? []).filter((v) => v.vision?.active && v.vision.los);
+      for (const t of canvas.tokens?.placeables ?? []) {
+        if (!t.visible || t.isPreview || t.controlled) continue;
+        if ((Number(t.document.elevation) || 0) < z) continue; // on the tile or above it
+        const c = t.center;
+        if (!mesh.containsCanvasPoint(c, ALPHA)) continue;
+        // The hover fade lives only where a token BELOW the tile sees (core compares elevations in the mask).
+        const seen = (st.vision > 0.01) && viewers.some((v) => ((Number(v.document.elevation) || 0) < z)
+          && v.vision.los.contains(c.x, c.y));
+        const f = 1 - Math.max(st.fade, seen ? st.vision : 0);
+        if (!(f < 0.99)) continue;
+        next.set(t.id, Math.min(next.get(t.id) ?? 1, f));
+      }
+    }
+  }
   // Refresh the tokens whose factor changed; the map is updated first — the refresh reads it later this frame.
   const changed = [];
   for (const [tid, f] of next) if (_hidden.get(tid) !== f) changed.push(tid);
@@ -630,8 +672,13 @@ function _redraw(mask, enabled) {
     const viewers = tiles.length
       ? (canvas.tokens?._getOccludableTokens?.() ?? []).filter((t) => t.vision?.active && t.vision.los)
       : [];
-    const marks = tiles.length ? (canvas.walls?.placeables ?? []).filter((w) => _isDoorOrWindow(w.document)) : [];
-    if (tiles.length) _ensureTicker(); // hiding tokens on the roof needs it even with every edge option off
+    // Candidates: doors and windows, and sight walls with a finite top (an opening for whoever looks over them).
+    const marks = tiles.length ? (canvas.walls?.placeables ?? [])
+      .filter((w) => _isDoorOrWindow(w.document) || _belowEye(w.document, Infinity)) : [];
+    // Hiding tokens on the roof needs it even with every edge option off — on plain «Fade» tiles too (_tickHide).
+    const plainFade = _setting(S_HIDE) && (canvas.tiles?.placeables ?? []).some((t) => !_isPartial(t.document)
+      && (t.document.occlusion?.mode === CONST.OCCLUSION_MODES.FADE));
+    if (tiles.length || plainFade) _ensureTicker();
     for (const tile of tiles) {
       // ⚠️ The silhouette keeps the roof whole outside the cuts — needed only against a viewer BELOW it, the only
       // one that dissolves it. It sits in the SHARED vision channel, so it also kept everything above the roof from
@@ -652,7 +699,8 @@ function _redraw(mask, enabled) {
         const eye = Number(token.losHeight ?? token.document.elevation);
         for (const w of marks) {
           const c = w.document.c;
-          if (!_atEye(w.document, eye) || !_underRoof(tile.mesh, c)) continue;
+          const open = _belowEye(w.document, eye) || (_isDoorOrWindow(w.document) && _atEye(w.document, eye));
+          if (!open || !_underRoof(tile.mesh, c)) continue;
           const view = _behind(los.origin, c);
           _cut(L.cuts, los, view, value, pieces);
           _cut(L.cuts, los, _front(los.origin, c), value, pieces);

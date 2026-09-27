@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+- Partial tile fade: a wall whose top is below the token's eyes now counts as an opening. A token above it — say, on a
+  bridge that enters a tower over the gate — sees into the room under the roof.
+- Tokens standing on a faded tile now fade out on tiles with plain «Fade» too (a bridge, a balcony): hovered from
+  below, the tile no longer leaves them hanging in the air. Same setting as for partial fade, renamed «Fade: hide
+  tokens on a faded roof».
+
 ## 0.3.1
 - Update notice: when a newer ADMaps Tools release is out, the GM gets a window with both versions and how to update.
   «Don't show again» hides it until the next release; the tool can be turned off in the module settings.

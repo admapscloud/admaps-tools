@@ -54,8 +54,9 @@ switched off with the **Elevation regions** setting.
 
 ### Tiles and roofs
 - **Partial tile fade** — a new occlusion mode: on hover a roof dissolves only in front of doors and windows and where
-  the token looks through them; a token that walks in to stop under the roof fades it whole at once. Optional outline,
-  inner shadow and fog inside the cut.
+  the token looks through them or over a wall lower than its eyes; a token that walks in to stop under the roof fades
+  it whole at once. Optional outline, inner shadow and fog inside the cut. Tokens standing on a faded roof fade out
+  with it — on tiles with plain «Fade» too (a bridge, a balcony).
 - **Better Roofs link on hover** — linked tiles («Occlusion Link Id») also fade while the source tile is hovered.
 - **Roof fog fix** — clears the stale black fog left after a token leaves a Better Roofs roof.
 - **Roofs fade fast** — removes the core delay before a roof fades.
