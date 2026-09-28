@@ -199,6 +199,8 @@
   "ADM_LEVELS.tilePartialFade.shadowUnder": "Black shadow under the tile",
   "ADM_LEVELS.settings.tileHoverLink.name": "Better Roofs link on hover",
   "ADM_LEVELS.settings.tileHoverLink.hint": "Better Roofs fades linked tiles («Occlusion Link Id») only while a token stands under the source tile. With this tool they also fade while the cursor hovers the source — together with it and just as smoothly. For example, a mast over the forecastle hides while the forecastle roof is hover-dissolved: give the roof an Id and check «Occlusion Link Source?», give the mast the same Id without the check.",
+  "ADM_LEVELS.settings.sharedVideo.name": "Shared video for identical tiles",
+  "ADM_LEVELS.settings.sharedVideo.hint": "Video tiles with the same file show one shared video instead of a copy of their own each: the file is decoded once for all the copies. The browser decodes webm with transparency on the CPU, and the load grew with every copy. The copies move in sync, frame for frame; pause, seek and volume of one copy act on all of them. Not shared: files also used by tokens, and tiles with pauses between showings or a clip pool. Turning it on or off takes a reload.",
   "ADM_LEVELS.settings.tilePartialFadeHideOnRoof.name": "Fade: hide tokens on a faded roof",
   "ADM_LEVELS.settings.tilePartialFadeHideOnRoof.hint": "Tokens standing on the roof inside the cut fade out with the roof while it is hovered — otherwise they seem to stand inside the room. The same on tiles with plain «Fade» (a bridge, a balcony): tokens standing on them fade out while the tile is faded. Point at the token itself and the roof comes back together with it.",
   "ADM_LEVELS.tilePartialFade.option": "Partial fade",

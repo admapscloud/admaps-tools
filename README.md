@@ -58,6 +58,8 @@ switched off with the **Elevation regions** setting.
   it whole at once. Optional outline, inner shadow and fog inside the cut. Tokens standing on a faded roof fade out
   with it — on tiles with plain «Fade» too (a bridge, a balcony).
 - **Better Roofs link on hover** — linked tiles («Occlusion Link Id») also fade while the source tile is hovered.
+- **Shared video for identical tiles** — video tiles with the same file show one shared video: one decode for all
+  the copies, which play in sync.
 - **Roof fog fix** — clears the stale black fog left after a token leaves a Better Roofs roof.
 - **Roofs fade fast** — removes the core delay before a roof fades.
 - **Tile control panel** — tiles listed by Z-order: isolate, zoom, search, reorder with Alt+↑/↓.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+- Shared video for identical tiles: video tiles with the same file draw one shared video instead of a copy each, so
+  the file is decoded once for all of them — webm with transparency is decoded on the CPU, and the load used to grow
+  with every copy. The copies play in sync; pause, seek and volume of one act on all of them. Not shared: files also
+  used by tokens, and tiles with pauses between showings or a clip pool. On by default; toggling it takes a reload.
+
 ## 0.3.2
 - Partial tile fade: a wall whose top is below the token's eyes now counts as an opening. A token above it — say, on a
   bridge that enters a tower over the gate — sees into the room under the roof.

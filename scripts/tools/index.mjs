@@ -31,6 +31,7 @@ import { TOOL as sceneExportName } from "./scene-export-name.mjs";
 import { TOOL as tileScroll } from "./tile-scroll.mjs";
 import { TOOL as tilePartialFade } from "./tile-partial-fade.mjs";
 import { TOOL as tileHoverLink } from "./tile-hover-link.mjs";
+import { TOOL as sharedVideo } from "./shared-video.mjs";
 import { TOOL as sceneRecord } from "./scene-record.mjs";
 import { TOOL as wallHeightFilter } from "./wall-height-filter.mjs";
 import { TOOL as massEditMirrorFix } from "./massedit-mirror-fix.mjs";
@@ -80,6 +81,7 @@ const TOOLS = [
   tileScroll,
   tilePartialFade,
   tileHoverLink,
+  sharedVideo,
   sceneRecord,
   wallHeightFilter,
   massEditMirrorFix,
