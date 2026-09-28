@@ -78,6 +78,9 @@ switched off with the **Elevation regions** setting.
 - **Wall filter by floor** — shows only the walls of one floor while you edit.
 - **Walls during movement use waypoint elevation** — height-limited walls are tested at the elevation of each waypoint
   (a stair step, a plateau).
+- **Regions cut walls** — a region with «Cut walls» switches off the walls whose middle lies in it, within its height
+  range, while it covers them; walls linked to it by Mass Edit are left alone. For example, the ends of a bridge between
+  two wagons open the wagons' walls where it meets them, and the walls come back when the bridge is moved away.
 
 ### Multiple floors (Levels)
 - **Floor follows token** — the Levels floor panel follows the selected token's elevation.

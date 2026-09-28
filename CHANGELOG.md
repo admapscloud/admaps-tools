@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+- Regions cut walls: a «Cut walls» checkbox in the region config. A wall whose middle lies in such a region, whose
+  height falls in its elevation range and which is not linked to it by Mass Edit is switched off entirely — as if it
+  were not there — while the region covers it, and comes back as it was when the region is moved or deleted. Made for
+  bridges between wagons: regions at the bridge's ends, linked to the bridge, open the wagons' walls where it meets them.
+
 ## 0.3.3
 - Shared video for identical tiles: video tiles with the same file draw one shared video instead of a copy each, so
   the file is decoded once for all of them — webm with transparency is decoded on the CPU, and the load used to grow

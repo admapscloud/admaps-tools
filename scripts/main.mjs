@@ -12,7 +12,7 @@ import { panelFloor, wallOnFloor, regionOnFloor } from "./tools/floor-range.mjs"
 // Build marker: `__ADM_BUILD` in the console shows which code the client actually
 // loaded. Electron caches JS until a full re-login, and without the marker "not
 // fixed" is indistinguishable from "not reloaded".
-globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-09-28-1107" });
+globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-09-28-1741" });
 
 // Force fly.walls = "move" and swim.canSelect = true ASAP, before Foundry freezes CONFIG.
 // By default in v13 swim has canSelect=false, so tokenDoc.update({movementAction:"swim"})
@@ -69,6 +69,8 @@ const FLAG_DISABLED = "disabled";    // boolean — whether the region is disabl
 const FLAG_TILE_BIND = "tileBindId"; // string — id of the tile whose visibility the region is bound to
 const FLAG_TILE_INVERT = "tileInvert"; // boolean — inverted logic (hidden→active, visible→inactive)
 const FLAG_IGNORE_EFFECTS = "ignoreEffects"; // transport: a token inside ignores region effects (does not sink in water, auras do not apply)
+const FLAG_CUT_WALLS = "cutWalls";   // boolean — the region cuts foreign walls under it (tools/wall-cut-regions.mjs)
+const FLAG_CUT_ORIG = "cutOrig";     // wall: its own state while a region cuts it (tools/wall-cut-regions.mjs)
 const FLAG_VIDEO_SKIP = "videoSkip";   // string "N" | "N-M": pause of N (or random N..M) playbacks between showings of a video tile
 const FLAG_VIDEO_POOL = "videoPool";   // string: wildcard pattern (e.g. "critters/birds-*.webm") — a random clip from the pool on each showing
 
@@ -742,6 +744,7 @@ Hooks.on("renderRegionConfig", (app, element) => {
   const tileBindId = doc.getFlag(MODULE_ID, FLAG_TILE_BIND) ?? "";
   const tileInvert = !!doc.getFlag(MODULE_ID, FLAG_TILE_INVERT);
   const ignoreEffects = !!doc.getFlag(MODULE_ID, FLAG_IGNORE_EFFECTS);
+  const cutWalls = !!doc.getFlag(MODULE_ID, FLAG_CUT_WALLS);
   const boundTile = tileBindId ? (doc.parent ?? canvas.scene)?.tiles?.get(tileBindId) : null;
   const tileLabel = boundTile ? `${tileBindId.slice(0, 8)}… (${Math.round(boundTile.x)},${Math.round(boundTile.y)})` : "—";
 
@@ -831,6 +834,13 @@ Hooks.on("renderRegionConfig", (app, element) => {
           <span style="font-size:12px;">${game.i18n.localize("ADM_LEVELS.ui.transportIgnore")}</span>
         </label>
       </div>    </div>
+    <!-- Cut walls: any type or none (a bridge end is often just a region) — always shown, its own Mass Edit group. -->
+    <div class="form-group" data-adm-cut-walls-group>
+      <label>${game.i18n.localize("ADM_LEVELS.ui.cutWalls")}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="flags.${MODULE_ID}.${FLAG_CUT_WALLS}" ${cutWalls ? "checked" : ""} data-tooltip="${game.i18n.localize("ADM_LEVELS.ui.cutWallsHint")}">
+      </div>
+    </div>
     <div class="form-group" data-adm-disabled-group style="display:${type ? "flex" : "none"};">
       <label>${game.i18n.localize("ADM_LEVELS.ui.disable")}</label>
       <div class="form-fields">
@@ -857,7 +867,7 @@ Hooks.on("renderRegionConfig", (app, element) => {
   colorGroup.insertAdjacentHTML("afterend", html);
 
   // Remove any Foundry-auto-generated inputs for our flags to avoid duplicates.
-  const allMyFlags = [FLAG_TYPE, FLAG_ELEVATION, FLAG_FLOOR, FLAG_TRANSITION, FLAG_DIRECTION, FLAG_DISABLED, FLAG_TILE_BIND, FLAG_TILE_INVERT, FLAG_IGNORE_EFFECTS, "negative"];
+  const allMyFlags = [FLAG_TYPE, FLAG_ELEVATION, FLAG_FLOOR, FLAG_TRANSITION, FLAG_DIRECTION, FLAG_DISABLED, FLAG_TILE_BIND, FLAG_TILE_INVERT, FLAG_IGNORE_EFFECTS, FLAG_CUT_WALLS, "negative"];
   for (const f of allMyFlags) {
     const name = `flags.${MODULE_ID}.${f}`;
     const dupes = element.querySelectorAll(`[name="${name}"]`);
@@ -2304,6 +2314,8 @@ async function _applyWallBindState(wallDoc) {
   if (!game.user?.isGM) return;
   const tileId = wallDoc.getFlag(MODULE_ID, FLAG_TILE_BIND);
   if (!tileId) return;
+  // A wall a region cuts belongs to the cut; the binding is re-applied once it is restored (tools/wall-cut-regions.mjs).
+  if (wallDoc.getFlag(MODULE_ID, FLAG_CUT_ORIG)) return;
   const scene = wallDoc.parent ?? canvas.scene;
   const tile = scene?.tiles?.get(tileId);
   if (!tile) return;
@@ -2367,6 +2379,8 @@ async function _applyWallBindState(wallDoc) {
 
   await wallDoc.update(update, { admLevelsBindSync: true });
 }
+// For tools/wall-cut-regions.mjs: re-apply the binding of a wall the cut has just released.
+globalThis.__admApplyWallBind = _applyWallBindState;
 
 // preUpdateWall: when a new binding appears — snapshot the current state.
 // On unbinding — restore from the snapshot and delete the snapshot flag.
@@ -2382,11 +2396,13 @@ Hooks.on("preUpdateWall", (wallDoc, changes) => {
     // by the admaps-scene-switch module on a variant change — the original there is already correct).
     const origProvided = foundry.utils.getProperty(changes, `flags.${MODULE_ID}.${FLAG_WALL_ORIG}`) !== undefined;
     if (!wallDoc.getFlag(MODULE_ID, FLAG_WALL_ORIG) && !origProvided) {
+      // A wall cut by a region shows NONE everywhere — its own state is in the cut's snapshot.
+      const own = wallDoc.getFlag(MODULE_ID, FLAG_CUT_ORIG) ?? wallDoc;
       foundry.utils.setProperty(changes, `flags.${MODULE_ID}.${FLAG_WALL_ORIG}`, {
-        move:  wallDoc.move,
-        sight: wallDoc.sight,
-        light: wallDoc.light,
-        sound: wallDoc.sound,
+        move:  own.move,
+        sight: own.sight,
+        light: own.light,
+        sound: own.sound,
       });
     }
   } else if (!newBind && oldBind) {
