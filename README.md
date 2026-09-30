@@ -1,5 +1,20 @@
 # ADMaps Tools
 
+To install the **ADMaps Tools** module:
+1. Go to the **Add-on Modules** tab in Foundry VTT.
+2. Paste the manifest link below into the **Manifest URL** field at the bottom.
+3. Click **Install**.
+
+The module will be automatically downloaded and installed. Once complete, enable it in your world settings like any other module.
+
+**Manifest URL:**
+
+```
+https://github.com/ar2rfenix/admaps-tools/releases/latest/download/module.json
+```
+
+---
+
 A toolbox for Foundry VTT v13, built for [Animated Dungeon Maps](https://admaps.cloud/) scenes and useful on any map:
 elevation regions (plateaus, stairs, water, transport), helpers for multi-floor scenes, roofs and doors, scene variations,
 batch scene import and a set of editing tools.
@@ -14,14 +29,6 @@ Every tool has its own checkbox in the module settings, so you can keep only wha
   [Better Roofs](https://foundryvtt.com/packages/betterroofs). The floor, roof and wall tools work with them;
   the rest of the module does not need them.
 - Optional: Mass Edit, Sequencer, Dice So Nice — only the tools that mention them use them.
-
-## Installation
-
-In Foundry: **Add-on Modules → Install Module**, search for **ADMaps Tools**, or paste the manifest URL:
-
-```
-https://github.com/ar2rfenix/admaps-tools/releases/latest/download/module.json
-```
 
 ## Elevation regions
 
