@@ -117,10 +117,6 @@ switched off with the **Elevation regions** setting.
 - **Update notice** — when a newer ADMaps Tools release is out, the GM gets a window with both versions and how to
   update. «Don't show again» hides it until the next release.
 
-## Languages
-
-English, Russian.
-
 ## License
 
 [MIT](LICENSE) © ADMaps
