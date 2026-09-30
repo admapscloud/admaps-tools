@@ -12,7 +12,7 @@
 // Settings live in the tile config tab, inside a spoiler (<details>), to avoid clutter.
 
 const MODULE_ID = "adm-levels";
-const FLAG = "tileScroll"; // flags.adm-levels.tileScroll.{enabled,direction,speed,feather,featherWidth}
+const FLAG = "tileScroll"; // flags.adm-levels.tileScroll.{enabled,direction,speed,move,stopAt,timeShift,feather,featherWidth,…}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scroll shader
@@ -193,7 +193,14 @@ function _scrollShaderClass() {
       // and small 0..1 values are exact in float32. (serverTime ~1.75e12 fed directly into float32
       // would «freeze» for ~2 min, then jump — because the ULP step is ≈131072.) serverTime is in sync
       // across clients → the scroll phase is the same for everyone.
-      const t = game.time?.serverTime ?? canvas.app.ticker.lastTime;
+      // «Motion» off: the phase stands where the stop found it (stopAt) and a restart goes on from there (timeShift =
+      // all paused time) — no jump, the same on every client (both written by the preUpdateTile hook in onReady).
+      // A tile saved stopped without stopAt (Mass Edit, import) stands where this client first drew it.
+      const now = game.time?.serverTime ?? canvas.app.ticker.lastTime;
+      let t = now;
+      if (f.move === false) t = (f.stopAt != null) ? Number(f.stopAt) : (this._admFreezeT ??= now);
+      else this._admFreezeT = null;
+      t -= Number(f.timeShift) || 0;
       const dir = Math.toRadians(Number(f.direction) || 0);
       const world = !!f.world;
       this.uniforms.admWorld = world;
@@ -349,6 +356,7 @@ function _injectConfig(app, html) {
   const patternRotation = Number(f.patternRotation) || 0;
   const direction = Number(f.direction) || 0;
   const speed = Number(f.speed) || 5;
+  const move = f.move !== false;
   const feather = !!f.feather;
   const edgeStyle = ["", "torn", "brush"][_edgeStyle(f)];
   const featherWidth = Number(f.featherWidth) || 0.12;
@@ -385,7 +393,8 @@ function _injectConfig(app, html) {
       <div class="form-group slim">
         <label data-adm-tilescroll-speed>${L(world ? "speedPx" : "speed")}</label>
         <div class="form-fields">
-          <input type="number" step="any" name="flags.adm-levels.tileScroll.speed" value="${speed}" placeholder="5">
+          <input type="checkbox" name="flags.adm-levels.tileScroll.move" ${move ? "checked" : ""} data-tooltip="${L("moveHint")}">
+          <input type="number" step="any" name="flags.adm-levels.tileScroll.speed" value="${speed}" placeholder="5" style="width:64px;">
         </div>
       </div>
       <div class="form-group slim">
@@ -443,6 +452,25 @@ export const TOOL = {
     Hooks.on("drawTile", (tileObj) => {
       if (!isEnabled()) return;
       if (_cfg(tileObj?.document).enabled) _applyToTile(tileObj);
+    });
+    // «Motion» box: the phase must not jump on a stop or a restart. Written into the same update that flips the box
+    // (config form, Mass Edit, a macro): stopAt — server time of the stop; timeShift — all the time spent stopped.
+    Hooks.on("preUpdateTile", (tileDoc, changed) => {
+      if (!isEnabled()) return;
+      const next = foundry.utils.getProperty(changed ?? {}, `flags.${MODULE_ID}.${FLAG}.move`);
+      if (next === undefined) return;
+      const f = _cfg(tileDoc);
+      const wasMoving = f.move !== false;
+      const moving = next !== false;
+      if (wasMoving === moving) return;
+      const t = game.time?.serverTime ?? Date.now();
+      if (!moving) {
+        foundry.utils.setProperty(changed, `flags.${MODULE_ID}.${FLAG}.stopAt`, t);
+      } else {
+        const pause = (f.stopAt != null) ? Math.max(0, t - Number(f.stopAt)) : 0;
+        foundry.utils.setProperty(changed, `flags.${MODULE_ID}.${FLAG}.timeShift`, (Number(f.timeShift) || 0) + pause);
+        foundry.utils.setProperty(changed, `flags.${MODULE_ID}.${FLAG}.stopAt`, null);
+      }
     });
     Hooks.on("updateTile", (tileDoc, changed) => {
       if (!isEnabled()) return;

@@ -12,7 +12,7 @@ import { panelFloor, wallOnFloor, regionOnFloor } from "./tools/floor-range.mjs"
 // Build marker: `__ADM_BUILD` in the console shows which code the client actually
 // loaded. Electron caches JS until a full re-login, and without the marker "not
 // fixed" is indistinguishable from "not reloaded".
-globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-09-28-1741" });
+globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-09-29-1415" });
 
 // Force fly.walls = "move" and swim.canSelect = true ASAP, before Foundry freezes CONFIG.
 // By default in v13 swim has canSelect=false, so tokenDoc.update({movementAction:"swim"})
@@ -227,6 +227,8 @@ function _isRegionEffectivelyDisabled(doc) {
   const shouldBeActive = invert ? tileHidden : !tileHidden;
   return !shouldBeActive;
 }
+// For tools/wall-cut-regions.mjs: a region switched off (its checkbox or its bound tile) cuts no walls either.
+globalThis.__admRegionOff = _isRegionEffectivelyDisabled;
 
 /** Is the token inside an active "transport" region with the "Ignore region effects" checkbox?
  *  Such a token does not sink in water and does not receive region auras (the "wagon" shield).
@@ -838,15 +840,15 @@ Hooks.on("renderRegionConfig", (app, element) => {
     <div class="form-group" data-adm-cut-walls-group>
       <label>${game.i18n.localize("ADM_LEVELS.ui.cutWalls")}</label>
       <div class="form-fields">
-        <input type="checkbox" name="flags.${MODULE_ID}.${FLAG_CUT_WALLS}" ${cutWalls ? "checked" : ""} data-tooltip="${game.i18n.localize("ADM_LEVELS.ui.cutWallsHint")}">
+        <input type="checkbox" data-adm-cut-walls name="flags.${MODULE_ID}.${FLAG_CUT_WALLS}" ${cutWalls ? "checked" : ""} data-tooltip="${game.i18n.localize("ADM_LEVELS.ui.cutWallsHint")}">
       </div>
     </div>
-    <div class="form-group" data-adm-disabled-group style="display:${type ? "flex" : "none"};">
+    <div class="form-group" data-adm-disabled-group style="display:${(type || cutWalls) ? "flex" : "none"};">
       <label>${game.i18n.localize("ADM_LEVELS.ui.disable")}</label>
       <div class="form-fields">
         <input type="checkbox" data-adm-disabled name="flags.${MODULE_ID}.${FLAG_DISABLED}" ${disabled ? "checked" : ""}>      </div>
     </div>
-    <div class="form-group" data-adm-bind-group style="display:${type ? "flex" : "none"};align-items:center;">
+    <div class="form-group" data-adm-bind-group style="display:${(type || cutWalls) ? "flex" : "none"};align-items:center;">
       <label>${game.i18n.localize("ADM_LEVELS.ui.tileBind")}</label>
       <div class="form-fields" style="display:flex;align-items:center;gap:6px;">
         <!-- Right-aligned row: bound tile, clear, pick, invert — the controls sit together next to the checkbox. -->
@@ -1018,6 +1020,18 @@ Hooks.on("renderRegionConfig", (app, element) => {
 
   function _onAnyChange() { _syncHidden(); _autoRename(); _autoColor(); _meTick(typeGroup); }
 
+  // «Disable region» and «Bind to tile» — for a region with a type, and for a wall-cutting one without it too
+  // (a bridge end is often just a region: hiding the bridge tile has to give the wagon's wall back).
+  const cutBox = element.querySelector("[data-adm-cut-walls]");
+  function _toggleOffGroups() {
+    const show = !!typeSelect.value || !!cutBox?.checked;
+    const disabledGroup = element.querySelector("[data-adm-disabled-group]");
+    if (disabledGroup) disabledGroup.style.display = show ? "flex" : "none";
+    const bindGroup = element.querySelector("[data-adm-bind-group]");
+    if (bindGroup) bindGroup.style.display = show ? "flex" : "none";
+  }
+  cutBox?.addEventListener("change", _toggleOffGroups);
+
   // Type switch.
   typeSelect.addEventListener("change", () => {
     const t = typeSelect.value;
@@ -1027,10 +1041,7 @@ Hooks.on("renderRegionConfig", (app, element) => {
     stairsGroup.style.display = t === "stairs" ? "flex" : "none";
     waterGroup.style.display = t === "water" ? "flex" : "none";
     if (transportGroup) transportGroup.style.display = t === "transport" ? "flex" : "none";
-    const disabledGroup = element.querySelector("[data-adm-disabled-group]");
-    if (disabledGroup) disabledGroup.style.display = t ? "flex" : "none";
-    const bindGroup = element.querySelector("[data-adm-bind-group]");
-    if (bindGroup) bindGroup.style.display = t ? "flex" : "none";
+    _toggleOffGroups();
     if (t === "stairs") {
       if (!stairsHi.value) stairsHi.value = "medium";
       _drawDirRing(ringCanvas, hiddenDir);

@@ -71,7 +71,8 @@ switched off with the **Elevation regions** setting.
 - **Roofs fade fast** — removes the core delay before a roof fades.
 - **Tile control panel** — tiles listed by Z-order: isolate, zoom, search, reorder with Alt+↑/↓.
 - **Tile auto-align** — puts a tile back where it sat on the original map by matching it against the background.
-- **Tile scroll** — animated texture scrolling with feathered edges.
+- **Tile scroll** — animated texture scrolling with feathered edges; «Motion» freezes it in place and resumes it from the
+  same spot, without a jump.
 - **Video reanimator** — resumes WEBM videos on the canvas when they freeze.
 
 ### Doors and walls
@@ -87,7 +88,8 @@ switched off with the **Elevation regions** setting.
   (a stair step, a plateau).
 - **Regions cut walls** — a region with «Cut walls» switches off the walls whose middle lies in it, within its height
   range, while it covers them; walls linked to it by Mass Edit are left alone. For example, the ends of a bridge between
-  two wagons open the wagons' walls where it meets them, and the walls come back when the bridge is moved away.
+  two wagons open the wagons' walls where it meets them, and the walls come back when the bridge is moved away. A region
+  that is switched off — its «Disable region» box or a hidden bound tile — cuts nothing.
 
 ### Multiple floors (Levels)
 - **Floor follows token** — the Levels floor panel follows the selected token's elevation.
@@ -116,6 +118,11 @@ switched off with the **Elevation regions** setting.
 ### Module
 - **Update notice** — when a newer ADMaps Tools release is out, the GM gets a window with both versions and how to
   update. «Don't show again» hides it until the next release.
+
+## Languages
+
+English, Chinese (Simplified), French, German, Italian, Japanese, Korean, Polish, Portuguese (Brazil), Russian, Spanish,
+Ukrainian.
 
 ## License
 

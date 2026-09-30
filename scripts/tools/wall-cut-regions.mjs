@@ -19,6 +19,9 @@
 // and after the restore the binding is re-applied (__admApplyWallBind).
 // Height: the wall's wall-height span and the region's elevation range must overlap by more than a point — a region
 // 15–30 does not cut a wall 0–15 under it; empty bounds are endless.
+// A region switched off — «Disable region», or bound to a tile that is hidden (inverted: shown) — cuts nothing, so hiding
+// the bridge tile gives the wagon's wall back (29.09.2026). The binding is read live, nothing is written to the region
+// when the tile changes: tile shown/hidden, created or deleted re-evaluates the cut.
 // Toggling the checkbox needs a reload (the hooks are set on start).
 
 const MODULE_ID = "adm-levels";
@@ -75,7 +78,10 @@ async function _sync() {
   if (!scene || !game.users?.activeGM?.isSelf) return;
   _running = true;
   try {
-    const cutters = scene.regions.filter((r) => !!r.flags?.[MODULE_ID]?.[FLAG_CUT]);
+    // A region switched off — its «Disable region» box, or its bound tile hidden (inverted: shown) — cuts nothing:
+    // the same rule as every other region feature (main.mjs _isRegionEffectivelyDisabled).
+    const off = globalThis.__admRegionOff;
+    const cutters = scene.regions.filter((r) => !!r.flags?.[MODULE_ID]?.[FLAG_CUT] && !off?.(r));
     const updates = [];
     const rebind = [];
     for (const wall of scene.walls) {
@@ -139,6 +145,10 @@ export const TOOL = {
       if (options?.admLevelsWallCut) return; // our own write
       if (("c" in (changes ?? {})) || changes?.flags) _schedule();
     });
+    // A region bound to a tile follows its visibility — nothing is written to the region, so watch the tiles.
+    Hooks.on("updateTile", (_doc, changes) => { if ("hidden" in (changes ?? {})) _schedule(); });
+    Hooks.on("createTile", () => _schedule());
+    Hooks.on("deleteTile", () => _schedule());
     Hooks.on("canvasReady", () => _schedule());
   },
 };

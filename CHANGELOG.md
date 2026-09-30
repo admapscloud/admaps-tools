@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.5
+- New languages: Chinese (Simplified), French, German, Italian, Japanese, Korean, Polish, Portuguese (Brazil), Russian,
+  Spanish, Ukrainian.
+- Regions cut walls: a region that is switched off cuts nothing — its «Disable region» box, or a bound tile that is
+  hidden. Hide the bridge and the wagon's wall is back. «Disable region» and «Tile binding» now also show for a
+  wall-cutting region without a type.
+- Tile scroll: a «Motion» checkbox. Untick it to freeze the background where it is; tick it again and it moves on from
+  the same spot, without a jump.
+
 ## 0.3.4
 - Regions cut walls: a «Cut walls» checkbox in the region config. A wall whose middle lies in such a region, whose
   height falls in its elevation range and which is not linked to it by Mass Edit is switched off entirely — as if it
