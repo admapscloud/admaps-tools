@@ -10,7 +10,7 @@ The module will be automatically downloaded and installed. Once complete, enable
 **Manifest URL:**
 
 ```
-https://github.com/ar2rfenix/admaps-tools/releases/latest/download/module.json
+https://github.com/admapscloud/admaps-tools/releases/latest/download/module.json
 ```
 
 ---

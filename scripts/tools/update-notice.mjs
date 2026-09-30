@@ -13,7 +13,7 @@
 
 const MODULE_ID = "adm-levels";
 const SKIP = "updateNoticeSkip";               // user setting: the version the user asked not to be told about again
-const REPO_FALLBACK = "ar2rfenix/admaps-tools";
+const REPO_FALLBACK = "admapscloud/admaps-tools";
 const TIMEOUT_MS = 10000;
 
 /** "owner/repo" from the manifest's "url" (https://github.com/owner/repo). */
