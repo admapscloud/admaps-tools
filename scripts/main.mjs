@@ -12,7 +12,7 @@ import { panelFloor, wallOnFloor, regionOnFloor } from "./tools/floor-range.mjs"
 // Build marker: `__ADM_BUILD` in the console shows which code the client actually
 // loaded. Electron caches JS until a full re-login, and without the marker "not
 // fixed" is indistinguishable from "not reloaded".
-globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-09-29-1415" });
+globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-10-20-1749" });
 
 // Force fly.walls = "move" and swim.canSelect = true ASAP, before Foundry freezes CONFIG.
 // By default in v13 swim has canSelect=false, so tokenDoc.update({movementAction:"swim"})
@@ -1283,6 +1283,119 @@ function _computeRampElevation(region, px, py) {
 
 const _RAMP_OVERLAY_KEY = "__admLevelsRampOverlay";
 
+/* Height gradient of the stairs (user, 04.10.2026: «закраску градиентом, чтобы понимать лучше высоты по краям
+   лестницы», «плавный»). Each separate ramp of the region is painted from its foot colour to its top colour along the
+   arrow, on the same boxes the labels and the token height use; the core hatched fill is dimmed under it. */
+
+/** Colour scale, feet → 0xRRGGBB: grey at the ground and green at 15 ft («для 0-15 серый - зелёный»), then the plateau
+ *  auto-colours (yellow 30, orange 60, red 120); below the ground — blues. Mixed linearly between two anchors. */
+const _RAMP_SCALE = [
+  [-120, 0x1e3a8a], [-60, 0x2563eb], [-15, 0x60a5fa], [0, 0x9ca3af],
+  [15, 0x22c55e], [30, 0xeab308], [60, 0xf97316], [120, 0xef4444],
+];
+const _RAMP_GRAD_ALPHA = 0.5;   // the gradient over the map
+const _RAMP_FILL_DIM = 0.15;    // the core hatched fill under it (core draws it at 0.5)
+const _FILL_ALPHA_KEY = "__admLevelsFillAlpha";
+
+function _rampColorAt(ft) {
+  const s = _RAMP_SCALE;
+  if (ft <= s[0][0]) return s[0][1];
+  for (let i = 1; i < s.length; i++) {
+    const [f1, c1] = s[i];
+    if (ft > f1) continue;
+    const [f0, c0] = s[i - 1];
+    const k = (ft - f0) / (f1 - f0);
+    const mix = (sh) => Math.round(((c0 >> sh) & 255) + (((c1 >> sh) & 255) - ((c0 >> sh) & 255)) * k);
+    return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+  }
+  return s[s.length - 1][1];
+}
+
+const _rampGradTextures = new Map();   // "bot|top" → 256×1 texture; a handful per world, kept for the session
+
+/** The scale from botFt (left edge) to topFt (right edge), with a stop at every anchor in between. */
+function _rampGradTexture(botFt, topFt) {
+  const key = `${botFt}|${topFt}`;
+  const cached = _rampGradTextures.get(key);
+  if (cached?.baseTexture && !cached.baseTexture.destroyed) return cached;
+  const cv = document.createElement("canvas");
+  cv.width = 256;
+  cv.height = 1;
+  const ctx = cv.getContext("2d");
+  const g = ctx.createLinearGradient(0, 0, 256, 0);
+  const span = topFt - botFt;
+  const at = (ft) => (span ? (ft - botFt) / span : 0);
+  const fts = [botFt, topFt, ..._RAMP_SCALE.map(([ft]) => ft).filter((ft) => (ft - botFt) * (ft - topFt) < 0)];
+  for (const ft of fts.sort((a, b) => at(a) - at(b))) g.addColorStop(at(ft), `#${_rampColorAt(ft).toString(16).padStart(6, "0")}`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 1);
+  const tex = PIXI.Texture.from(cv);
+  _rampGradTextures.set(key, tex);
+  return tex;
+}
+
+/** One sprite per ramp box, turned along the slope and covering the box; clipped to the region shape with its holes
+ *  (the polygon tree core draws the border from). */
+function _rampGradient(region, pieces, dx, dy, botFt, topFt) {
+  if (!pieces.length) return null;
+  const tex = _rampGradTexture(botFt, topFt);
+  const box = new PIXI.Container();
+  box.eventMode = "none";
+  box.alpha = _RAMP_GRAD_ALPHA;
+  const qx = -dy, qy = dx;   // across the slope
+  for (const b of pieces) {
+    let pMin = Infinity, pMax = -Infinity, qMin = Infinity, qMax = -Infinity;
+    for (const [cx, cy] of [[b.minX, b.minY], [b.maxX, b.minY], [b.minX, b.maxY], [b.maxX, b.maxY]]) {
+      const p = cx * dx + cy * dy, q = cx * qx + cy * qy;
+      if (p < pMin) pMin = p; if (p > pMax) pMax = p;
+      if (q < qMin) qMin = q; if (q > qMax) qMax = q;
+    }
+    const sp = new PIXI.Sprite(tex);
+    sp.anchor.set(0.5, 0.5);
+    sp.rotation = Math.atan2(dy, dx);
+    sp.width = Math.max(1, pMax - pMin);
+    sp.height = Math.max(1, qMax - qMin);
+    sp.position.set((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2);
+    box.addChild(sp);
+  }
+  const mask = new PIXI.Graphics();
+  for (const node of region.document.polygonTree) {
+    if (node.isHole) continue;
+    mask.beginFill(0xffffff);
+    mask.drawShape(node.polygon);
+    if (node.children.length) {
+      mask.beginHole();
+      for (const hole of node.children) mask.drawShape(hole.polygon);
+      mask.endHole();
+    }
+    mask.endFill();
+  }
+  box.addChild(mask);
+  box.mask = mask;
+  return box;
+}
+
+/** The core hatched fill of a region — its RegionMesh child (core keeps it in a private field). */
+function _regionFillMesh(region) {
+  const RegionMesh = foundry?.canvas?.placeables?.regions?.RegionMesh;
+  return region.children?.find((c) => (RegionMesh ? c instanceof RegionMesh : c?.constructor?.name === "RegionMesh")) ?? null;
+}
+
+function _dimRegionFill(region) {
+  const fill = _regionFillMesh(region);
+  if (!fill) return;
+  if (region[_FILL_ALPHA_KEY] == null) region[_FILL_ALPHA_KEY] = fill.alpha;
+  fill.alpha = _RAMP_FILL_DIM;
+}
+
+function _restoreRegionFill(region) {
+  const alpha = region[_FILL_ALPHA_KEY];
+  if (alpha == null) return;
+  const fill = _regionFillMesh(region);
+  if (fill) fill.alpha = alpha;
+  delete region[_FILL_ALPHA_KEY];
+}
+
 function _drawRampArrow(region) {
   _clearRampOverlay(region);
   if (!_regionsOn()) return;   // master switch: no ramp arrows
@@ -1400,12 +1513,20 @@ function _drawRampArrow(region) {
   labelsContainer.addChild(mask);
   container.addChild(labelsContainer);
 
+  // Height gradient — the bottom layer, under the arrows and labels.
+  const grad = _rampGradient(region, pieces, ddx, ddy, botFt, topFt);
+  if (grad) {
+    container.addChildAt(grad, 0);
+    _dimRegionFill(region);
+  }
+
   if (region.children != null) region.addChild(container);
   else canvas.regions?.addChild(container);
   region[_RAMP_OVERLAY_KEY] = container;
 }
 
 function _clearRampOverlay(region) {
+  _restoreRegionFill(region);
   const old = region[_RAMP_OVERLAY_KEY];
   if (!old) return;
   try { old.parent?.removeChild(old); } catch (_e) {}
@@ -2674,6 +2795,16 @@ function _pointOnRegionOutline(doc, px, py, eps = 0.5) {
   return false;
 }
 
+/** Is the point inside a hole of the region (a hole node of its polygon tree)? A region without hole shapes — no
+ *  tree walk (this sits on the hot path of _elevationAtXY, only for points testPoint left outside). */
+function _inRegionHole(doc, px, py) {
+  if (!doc.shapes?.some((s) => s.hole)) return false;
+  let tree = null;
+  try { tree = doc.polygonTree; } catch (_e) { return false; }
+  for (const node of tree ?? []) if (node.isHole && node.polygon?.contains(px, py)) return true;
+  return false;
+}
+
 function _elevationAtXY(px, py, tokenElev = 0) {
   if (!_regionsOn()) return null;   // master switch: the same answer as for a scene without regions
   if (!canvas.regions?.placeables) return null;
@@ -2721,8 +2852,12 @@ function _elevationAtXY(px, py, tokenElev = 0) {
       // (plus the binary edge search), and by visibility checks across all tokens.
       // On "Winter Ball" (a 14-polygon region) this caused freezes on stairs.
       inside = doc.testPoint({ x: px, y: py, elevation: 0 });
-      if (!inside) {
+      // ⚠️ The per-shape check below only rescues points testPoint misses on an EDGE — it knows nothing of holes, and a
+      // point in a hole is outside the region (testPoint already said so). A 30 ft plateau with a 15 ft plateau standing
+      // in its hole put a token on the 15 ft plateau at 30 (20.10.2026, «Goblin Sawmill and Forge»).
+      if (!inside && !_inRegionHole(doc, px, py)) {
         for (const shape of doc.shapes) {
+          if (shape.hole) continue;
           if (shape.points?.length >= 6) {
             const pts = shape.points; let c = false;
             for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {

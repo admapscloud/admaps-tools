@@ -25,9 +25,9 @@
 //     can't be selected) — the stock behaviour comes back on the Select tool;
 //   • right click (or Esc, after Foundry has closed any open window) closes the chain: the pending
 //     segment disappears, nothing that was already created is touched. The next click starts a
-//     new chain. Leaving the wall tools or the layer closes it too.
-//   • after the user closes a chain a «+ Region» button offers a region from its outline
-//     (see wall-chain-region.mjs); Ctrl+Z right after that operation reverts it.
+//     new chain. Leaving the wall tools or the layer closes it too. The right click acts on RELEASE:
+//     a right drag pans the camera and the chain stays open (Foundry fires the right click on
+//     pointer DOWN, before it knows whether a pan follows).
 // Turn the toggle off to get the stock wall behaviour back (endpoint dragging, selection).
 //
 // Implementation: libWrapper on the walls layer (click / right-click / drag start-move-drop-
@@ -39,10 +39,6 @@
 // so a clicked wall is committed on pointer UP (window listener) and only if no drag started.
 
 import { panelFloor, wallOnFloor } from "./floor-range.mjs";
-import {
-  regionInit, regionOffer, regionHide, regionCancel, regionClick,
-  regionModeActive, regionOffered, regionUndo, regionForget,
-} from "./wall-chain-region.mjs";
 
 const MODULE_ID = "adm-levels";
 const WALL_TOOLS = new Set(["walls", "terrain", "invisible", "ethereal", "doors", "secret", "window", "clone"]);
@@ -59,10 +55,11 @@ let _seg = null;            // current straight run of the trace: { from, end, d
 let _runs = [];             // every run of the current stroke (their docs may not be in the scene yet)
 let _pendingClick = null;   // wall promised by the last pointer-down: { last, pt } (committed on pointer-up)
 let _upHandler = null;
+let _moveHandler = null;
+let _pendingRight = null;   // right press that closes a step on release: { x, y } client position; a pan drops it
 let _tracing = false;       // a grid trace drag is in progress
 let _hold = null;           // grid corner next to an off-grid start: skipped until the cursor leaves its capture zone
 let _toolSeen = null;       // last tool name handled by _onToolChange
-let _path = [];             // points of the open chain in drawing order (the region outline)
 
 const _layer = () => canvas?.walls ?? null;
 const _wallToolActive = () => WALL_TOOLS.has(String(game.activeTool ?? ""));
@@ -289,35 +286,34 @@ function _movePreviewStart(layer, from) {
 /*  Chain                                       */
 /* -------------------------------------------- */
 
-/** Outline: append a point (consecutive duplicates skipped). */
-function _pathAdd(p) {
-  if (p && !_same(_path[_path.length - 1], p)) _path.push([p[0], p[1]]);
-}
-
-/** Outline after an undo: back to the point the chain now continues from. */
-function _pathTrimTo(p) {
-  while (_path.length && !_same(_path[_path.length - 1], p)) _path.pop();
-  if (!_path.length) _path.push([p[0], p[1]]);
-}
-
-/** A new chain begins: fresh outline, no region offer, no region undo. */
-function _chainStarts() {
-  _path = [];
-  regionHide();
-  regionForget();
-}
-
-/** Close the chain: drop the pending segment, keep everything already created.
- *  `offer` — closed by the user (right click / Esc): offer a region from the outline. */
-function _cancelChain(layer, { offer = false } = {}) {
-  if (offer) regionOffer(_path); else regionHide();
-  _path = [];
+/** Close the chain: drop the pending segment, keep everything already created. */
+function _cancelChain(layer) {
   _stopPreview();
   _seg = null;
   _runs = [];
   _pendingClick = null;
   _hold = null;
   if (layer) { layer._last = { point: null }; layer._chain = false; }
+}
+
+/** One step back, as the right click / Esc does: an open chain is closed. `act` false — only tell whether there is
+ *  one to close. */
+function _closeStep(layer, act = true) {
+  if (!layer._last?.point || _dragging) return false;
+  if (act) _cancelChain(layer);
+  return true;
+}
+
+/** How far the pointer must move with a button held before Foundry treats the press as a drag (camera pan). */
+function _dragResistance() {
+  return canvas.mouseInteractionManager?.options?.dragResistance
+    || foundry.canvas.interaction?.MouseInteractionManager?.DEFAULT_DRAG_RESISTANCE_PX || 10;
+}
+
+/** A right press that moved past the drag resistance is a camera pan, not a click. */
+function _onPointerMove(ev) {
+  const pr = _pendingRight;
+  if (pr && Math.hypot(ev.clientX - pr.x, ev.clientY - pr.y) >= _dragResistance()) _pendingRight = null;
 }
 
 /** Drag tracing: commit the grid vertex the cursor is close to and continue from it. */
@@ -338,15 +334,23 @@ function _traceTo(layer, pos) {
   for (const p of _oneCellSteps(last, v, pos, gs)) {
     if (_same(p, from)) continue;
     _traceStep(layer, from, p);
-    _pathAdd(p);
     from = p;
   }
   layer._last = { point: from };
   _movePreviewStart(layer, from);
 }
 
-/** Pointer released: a pointer-down that did not turn into a drag commits its clicked wall. */
+/** Pointer released: a pointer-down that did not turn into a drag commits its clicked wall; a right press that did
+ *  not turn into a pan takes its step back. */
 function _onPointerUp(ev) {
+  if (ev.button === 2) {
+    const pr = _pendingRight;
+    _pendingRight = null;
+    if (!pr || Math.hypot(ev.clientX - pr.x, ev.clientY - pr.y) >= _dragResistance()) return;
+    const layer = _layer();
+    if (layer && _active(layer)) _closeStep(layer);
+    return;
+  }
   if (ev.button !== 0) return;
   const pc = _pendingClick;
   _pendingClick = null;
@@ -360,11 +364,7 @@ function _onPointerUp(ev) {
     _startPreview(layer, pc.last);
     return;
   }
-  if (pc.last) {
-    _pathAdd(pc.last);
-    void _createWall(layer, pc.last, pc.pt);
-  }
-  _pathAdd(pc.pt);
+  if (pc.last) void _createWall(layer, pc.last, pc.pt);
 }
 
 /* -------------------------------------------- */
@@ -412,11 +412,16 @@ function _setMode(on) {
       _upHandler = (ev) => { try { _onPointerUp(ev); } catch (e) { console.warn("[adm-levels] wall chain: pointer up", e); } };
       window.addEventListener("pointerup", _upHandler, true);
     }
+    if (!_moveHandler) {
+      _moveHandler = (ev) => { if (_pendingRight) _onPointerMove(ev); };
+      window.addEventListener("pointermove", _moveHandler, true);
+    }
   } else {
     _cancelChain(layer);
-    regionForget();
     _applyInteraction(layer);
+    _pendingRight = null;
     if (_upHandler) { window.removeEventListener("pointerup", _upHandler, true); _upHandler = null; }
+    if (_moveHandler) { window.removeEventListener("pointermove", _moveHandler, true); _moveHandler = null; }
   }
   try { layer.releaseAll?.(); } catch (_e) {}
 }
@@ -432,7 +437,6 @@ export const TOOL = {
       console.warn("[adm-levels] wall chain: libWrapper missing — tool not installed.");
       return;
     }
-    regionInit();
     const P = "foundry.canvas.layers.WallsLayer.prototype";
     const reg = (method, fn, kind) => {
       try { libWrapper.register(MODULE_ID, `${P}.${method}`, fn, kind); }
@@ -444,16 +448,10 @@ export const TOOL = {
       if (!isEnabled() || !_active(this)) return wrapped(event, ...rest);
       wrapped(event, ...rest);
       try {
-        if (regionModeActive()) {                                      // region pick: this press is ours
-          if (event?.interactionData) event.interactionData.admRegionClick = true;
-          regionClick();
-          return;
-        }
         const origin = event?.interactionData?.origin ?? canvas.mousePosition;
         const pt = _snapClick(this, origin, !event?.shiftKey);
         const last = this._last?.point ?? null;
         if (last && _same(last, pt)) return;                          // same point — nothing to draw
-        if (!last) _chainStarts();
         _pendingClick = { last, pt, data: event?.interactionData ?? null };
         _seg = null;                                                   // a clicked wall is never extended
         this._last = { point: pt };
@@ -461,28 +459,20 @@ export const TOOL = {
       } catch (e) { console.warn("[adm-levels] wall chain: click", e); }
     }, "MIXED");
 
-    // Right click: region pick → back to the button; open chain → close it (and offer a region);
-    // a region button on screen → hide it.
-    const closeStep = (layer) => {
-      if (regionModeActive()) { regionCancel(); return true; }
-      if (layer._last?.point && !_dragging) { _cancelChain(layer, { offer: true }); return true; }
-      if (regionOffered() && !_dragging) { regionHide(); return true; }
-      return false;
-    };
+    // Right click: one step back (_closeStep) — on RELEASE, and only if the press did not turn into a camera pan
+    // (05.10.2026, user: «нельзя камеру тянуть пока стену рисуешь» — the chain was closed on pointer down, before
+    // the pan started). The stock handler is skipped as before while there is a step to take back.
     reg("_onClickRight", function (wrapped, event, ...rest) {
-      if (isEnabled() && _active(this) && closeStep(this)) return;
-      return wrapped(event, ...rest);
-    }, "MIXED");
-
-    // Ctrl+Z right after a region operation reverts that operation instead of a wall.
-    reg("_onUndoKey", function (wrapped, event, ...rest) {
-      if (isEnabled() && _active(this) && regionUndo()) return true;
+      if (isEnabled() && _active(this) && _closeStep(this, false)) {
+        _pendingRight = { x: event?.clientX ?? event?.nativeEvent?.clientX ?? 0, y: event?.clientY ?? event?.nativeEvent?.clientY ?? 0 };
+        return;
+      }
       return wrapped(event, ...rest);
     }, "MIXED");
 
     // Esc (Foundry's dismiss chain, after open windows): the same steps as the right click.
     reg("_onDismissKey", function (wrapped, event, ...rest) {
-      if (isEnabled() && _active(this) && closeStep(this)) return true;
+      if (isEnabled() && _active(this) && _closeStep(this)) return true;
       return wrapped(event, ...rest);
     }, "MIXED");
 
@@ -502,7 +492,6 @@ export const TOOL = {
     // to it). With Shift held: still a click (the pointer-down promise is committed on release).
     // Gridless: the stock drag from the chain point. A trace drops the pointer-down promise.
     reg("_onDragLeftStart", function (wrapped, event, ...rest) {
-      if (event?.interactionData?.admRegionClick) return;             // the press picked a region
       if (!isEnabled() || !_active(this)) return wrapped(event, ...rest);
       if (event.shiftKey || game.keyboard?.isModifierActive?.("SHIFT")) {
         event.interactionData.admShiftClick = true;
@@ -511,7 +500,6 @@ export const TOOL = {
       const pc = _pendingClick;
       _pendingClick = null;
       const before = pc ? pc.last : (this._last?.point ?? null);       // chain point before this press
-      if (!before) _chainStarts();
       if (canvas.grid?.type === CONST.GRID_TYPES.GRIDLESS) {
         _dragging = true;
         _stopPreview();
@@ -530,18 +518,16 @@ export const TOOL = {
       const corner = _snapVertex({ x: v0[0], y: v0[1] });
       _hold = _same(corner, v0) ? null : corner;   // off-grid start: skip its nearest corner for now
       this._last = { point: v0 };
-      _pathAdd(v0);
       _startPreview(this, v0);
     }, "MIXED");
     reg("_onDragLeftMove", function (wrapped, event, ...rest) {
-      if (event?.interactionData?.admShiftClick || event?.interactionData?.admRegionClick) return;
+      if (event?.interactionData?.admShiftClick) return;
       if (!event?.interactionData?.admTrace) return wrapped(event, ...rest);
       try { _traceTo(this, event.interactionData.destination ?? canvas.mousePosition); }
       catch (e) { console.warn("[adm-levels] wall chain: trace", e); }
     }, "MIXED");
     reg("_onDragLeftDrop", function (wrapped, event, ...rest) {
       if (event?.interactionData?.admShiftClick) return;   // the pointer-up listener commits the click
-      if (event?.interactionData?.admRegionClick) return;
       if (!event?.interactionData?.admTrace) {
         const r = wrapped(event, ...rest);
         _dragging = false;
@@ -552,7 +538,7 @@ export const TOOL = {
       _hold = null;
     }, "MIXED");
     reg("_onDragLeftCancel", function (wrapped, event, ...rest) {
-      if (event?.interactionData?.admShiftClick || event?.interactionData?.admRegionClick) return;   // stock cancel would close the chain
+      if (event?.interactionData?.admShiftClick) return;   // stock cancel would close the chain
       if (!event?.interactionData?.admTrace) {
         const r = wrapped(event, ...rest);      // stock: resets _last → the chain is over
         _dragging = false;
@@ -582,7 +568,6 @@ export const TOOL = {
         if (open && isEnabled() && _active(this) && Array.isArray(deleted) && deleted.length) {
           const [x0, y0] = deleted[0].c;
           this._last = { point: [x0, y0] };
-          _pathTrimTo([x0, y0]);
           if (this.placeables.length <= 0) _cancelChain(this);
           else if (_dragging) _movePreviewStart(this, [x0, y0]);
           else _startPreview(this, [x0, y0]);
@@ -606,7 +591,6 @@ export const TOOL = {
             if (!_same(endsBefore.get(doc?.id), tip)) continue;
             const p = [doc.c[2], doc.c[3]];
             this._last = { point: p };
-            _pathTrimTo(p);
             if (_dragging) _movePreviewStart(this, p); else _startPreview(this, p);
             break;
           }
@@ -622,7 +606,7 @@ export const TOOL = {
       return r;
     }, "WRAPPER");
     reg("_deactivate", function (wrapped, ...rest) {
-      if (_on) { _cancelChain(this); regionForget(); }
+      if (_on) _cancelChain(this);
       _applyInteraction(this, { restore: true });   // a scene switch redraws the layer: hand the stock value back
       return wrapped(...rest);
     }, "WRAPPER");
@@ -651,8 +635,7 @@ export const TOOL = {
     // A new canvas: the toggle stays, the chain does not.
     Hooks.on("canvasReady", () => {
       _preview = null; _ticker = null; _dragging = false; _tracing = false; _hold = null;
-      _seg = null; _runs = []; _pendingClick = null; _path = [];
-      regionHide();
+      _seg = null; _runs = []; _pendingClick = null; _pendingRight = null;
       if (_on && !isEnabled()) { _setMode(false); return; }   // sub-module switched off in the settings
       const layer = _layer();
       if (_on && layer?.active) _applyInteraction(layer);

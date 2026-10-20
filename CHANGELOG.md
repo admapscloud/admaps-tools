@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.6
+- Stairs: a smooth height gradient under the arrow and the height labels, from the colour of the foot to the colour of
+  the top — grey at the ground, green at 15 ft, yellow at 30, orange at 60, red at 120, blues below the ground. Every
+  separate stairs of a region gets its own; holes stay unpainted; the region's hatching is dimmed under it.
+- Plateaus with a hole: a token in the hole is no longer lifted to the plateau's height. A 15 ft plateau standing in the
+  hole of a 30 ft one now puts the token at 15 — when dropped, dragged or routed by the pathfinder.
+- Wall chain by clicks: the right click acts on release. Drag with the right button to pan the camera while drawing —
+  the chain stays open; a plain right click still closes it.
+- Wall chain by clicks: the «+ Region» button is removed.
+
 ## 0.3.5
 - New languages: Chinese (Simplified), French, German, Italian, Japanese, Korean, Polish, Portuguese (Brazil), Russian,
   Spanish, Ukrainian.

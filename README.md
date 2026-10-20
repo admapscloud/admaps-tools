@@ -35,7 +35,7 @@ Every tool has its own checkbox in the module settings, so you can keep only wha
 The region config gets a type selector:
 
 - **Plateau** — a floor at a set elevation (a roof, a platform, an upper deck).
-- **Stairs** — a ramp from the bottom to the top along the ascent direction, shown with arrows.
+- **Stairs** — a ramp from the bottom to the top along the ascent direction, shown with arrows and a height gradient.
 - **Water** — a token below the surface switches to Swim movement.
 - **Transport** — a token inside ignores region effects; attach the region to a tile (a cart, a boat) with Mass Edit
   so it moves with it.
@@ -81,8 +81,7 @@ switched off with the **Elevation regions** setting.
 - **Quick door** — one click turns a wall into a wooden door with a sound, a swing animation and a texture.
 - **Door under a token** — a door icon under a token stops stealing clicks from it.
 - **Door leaf below the roof** — textured door leaves are drawn at their floor's height, so roofs cover them.
-- **Wall chain by clicks** — draw walls point by point or trace them through grid intersections, then make a region
-  from the outline.
+- **Wall chain by clicks** — draw walls point by point or trace them through grid intersections.
 - **Wall filter by floor** — shows only the walls of one floor while you edit.
 - **Walls during movement use waypoint elevation** — height-limited walls are tested at the elevation of each waypoint
   (a stair step, a plateau).
