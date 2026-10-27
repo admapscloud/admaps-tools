@@ -1,7 +1,8 @@
 // modules/adm-levels/scripts/tools/scene-folder-import.mjs
 // ADMaps Tools — "Import scenes from folder".
 //
-// A button in the scene directory header, between "Create Scene" and "Create Folder". The GM picks a folder
+// An entry in a scene's right-click menu in the Scenes list, after "Import Data" (it was a button in the list's
+// header until ADMaps Browser took that place, 22.10.2026). The GM picks a folder
 // in Foundry's Data — the module walks it together with its subfolders, finds scene JSON exports and
 // imports each one as a SEPARATE scene exactly the way it is done by hand: create an empty
 // scene → "Import Data" (Scene#importFromJSON) with the file contents.
@@ -223,41 +224,29 @@ async function _run() {
   }
 }
 
-function _injectButton(app, element, isEnabled) {
-  if (!isEnabled() || !game.user?.isGM) return;
-  const root = element instanceof HTMLElement ? element : app?.element;
-  const actions = root?.querySelector?.(".header-actions");
-  if (!actions || actions.querySelector("[data-adm-scene-import]")) return;
-  const create = actions.querySelector('[data-action="createEntry"]');
-  if (!create) return;                                          // no permission to create scenes
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.dataset.admSceneImport = "1";
-  btn.className = "adm-scene-import";
-  btn.dataset.tooltip = game.i18n.localize("ADM_LEVELS.sceneImport.button");
-  btn.setAttribute("aria-label", btn.dataset.tooltip);
-  btn.style.cssText = "flex:0 0 auto;min-width:2.4em;padding:0 .7em;";
-  btn.innerHTML = '<i class="fa-solid fa-file-import" inert></i>';
-  btn.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    _run().catch((e) => {
-      console.error("[ADM:Tools] sceneFolderImport", e);
-      ui.notifications.error(game.i18n.localize("ADM_LEVELS.sceneImport.error"));
-    });
-  });
-  create.after(btn);
-}
-
 export const TOOL = {
   id: "sceneFolderImport",
   name: "ADM_LEVELS.settings.sceneFolderImport.name",
   hint: "ADM_LEVELS.settings.sceneFolderImport.hint",
 
   onReady({ isEnabled }) {
-    Hooks.on("renderSceneDirectory", (app, element) => {
-      try { _injectButton(app, element, isEnabled); } catch (e) { console.warn("[ADM:Tools] sceneFolderImport: button injection failed", e); }
+    Hooks.on("getSceneContextOptions", (directory, entries) => {
+      // The hook is also fired by scene compendiums — the import goes into the world.
+      if (directory?.collection instanceof foundry.documents.collections.CompendiumCollection) return;
+      const item = {
+        name: "ADM_LEVELS.sceneImport.button",
+        icon: '<i class="fa-solid fa-file-import"></i>',
+        condition: () => isEnabled() && !!game.user?.isGM,
+        callback: () => {
+          _run().catch((e) => {
+            console.error("[ADM:Tools] sceneFolderImport", e);
+            ui.notifications.error(game.i18n.localize("ADM_LEVELS.sceneImport.error"));
+          });
+        },
+      };
+      const at = entries.findIndex((e) => e?.name === "SIDEBAR.Import");
+      if (at >= 0) entries.splice(at + 1, 0, item);        // right after «Import Data»
+      else entries.push(item);
     });
-    // The scene directory is already rendered before ready — add the button right away.
-    try { if (ui.scenes?.rendered) _injectButton(ui.scenes, ui.scenes.element, isEnabled); } catch { /* noop */ }
   },
 };

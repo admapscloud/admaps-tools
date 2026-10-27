@@ -29,6 +29,9 @@ import { TOOL as backgroundFreeze } from "./background-freeze.mjs";
 import { TOOL as filePreview } from "./file-preview.mjs";
 import { TOOL as sceneExportName } from "./scene-export-name.mjs";
 import { TOOL as tileScroll } from "./tile-scroll.mjs";
+import { TOOL as tileShadow } from "./tile-shadow.mjs";
+import { TOOL as tileSizeLock } from "./tile-size-lock.mjs";
+import { TOOL as regionTexture } from "./region-texture.mjs";
 import { TOOL as tilePartialFade } from "./tile-partial-fade.mjs";
 import { TOOL as tileHoverLink } from "./tile-hover-link.mjs";
 import { TOOL as sharedVideo } from "./shared-video.mjs";
@@ -80,6 +83,9 @@ const TOOLS = [
   filePreview,
   sceneExportName,
   tileScroll,
+  tileShadow,
+  tileSizeLock,
+  regionTexture,
   tilePartialFade,
   tileHoverLink,
   sharedVideo,

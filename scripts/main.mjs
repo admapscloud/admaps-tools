@@ -12,7 +12,7 @@ import { panelFloor, wallOnFloor, regionOnFloor } from "./tools/floor-range.mjs"
 // Build marker: `__ADM_BUILD` in the console shows which code the client actually
 // loaded. Electron caches JS until a full re-login, and without the marker "not
 // fixed" is indistinguishable from "not reloaded".
-globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-10-20-1749" });
+globalThis.__ADM_BUILD = Object.assign(globalThis.__ADM_BUILD ?? {}, { admLevels: "2026-10-21-0838" });
 
 // Force fly.walls = "move" and swim.canSelect = true ASAP, before Foundry freezes CONFIG.
 // By default in v13 swim has canSelect=false, so tokenDoc.update({movementAction:"swim"})
@@ -60,7 +60,7 @@ try {
 }
 
 const MODULE_ID = "adm-levels";
-const FLAG_TYPE = "type";           // "plateau" | "stairs" | "water" | "transport"
+const FLAG_TYPE = "type";           // "plateau" | "stairs" | "water" | "transport" | "texture" (tools/region-texture.mjs)
 const FLAG_ELEVATION = "elevation"; // signed key: "close", "-close", "medium", "-medium", etc.
 const FLAG_FLOOR = "floor";         // stairs lower signed key
 const FLAG_DIRECTION = "direction"; // 0-359 degrees
@@ -2820,8 +2820,9 @@ function _elevationAtXY(px, py, tokenElev = 0) {
     if (!type) continue;
     if (_isRegionEffectivelyDisabled(doc)) continue;
     // Water AND transport regions do not snap elevation (transport is only carrying + immunity;
-    // elevation is set by the real floor under the transport: ground/plateau/stairs).
-    if (type === "water" || type === "transport") continue;
+    // elevation is set by the real floor under the transport: ground/plateau/stairs). Texture regions
+    // (tools/region-texture.mjs) are only a picture on the ground.
+    if (type === "water" || type === "transport" || type === "texture") continue;
 
     // Check elevation bounds: if region has explicit bounds, respect them.
     const bot = doc.elevation?.bottom;

@@ -9,10 +9,14 @@
 // by itself: the primary group renders every frame → the shader's _preRender moves the UV over time.
 // Edge feathering is a separate PIXI filter on the mesh (multiplies alpha by a falloff to the 4 edges).
 //
-// Settings live in the tile config tab, inside a spoiler (<details>), to avoid clutter.
+// Settings live in the tile config tab, inside a spoiler (<details>), to avoid clutter: on/off and «Pattern» in its
+// header, then two rows — speed, motion, direction (and the pattern's rotation) / the edge and its width.
+
+import { SPOILER_CSS, dialHtml, spoilerOpen, wireSpoiler } from "./ui-controls.mjs";
 
 const MODULE_ID = "adm-levels";
 const FLAG = "tileScroll"; // flags.adm-levels.tileScroll.{enabled,direction,speed,move,stopAt,timeShift,feather,featherWidth,…}
+const OPEN_KEY = `${MODULE_ID}.tileScroll.open`;   // localStorage: the spoiler was left open
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scroll shader
@@ -345,74 +349,88 @@ function _applyToTile(tileObj) {
 // ─────────────────────────────────────────────────────────────────────────────
 // UI: spoiler in the tile config tab
 // ─────────────────────────────────────────────────────────────────────────────
+const CSS = `
+  .adm-tilescroll .adm-tsc-grid { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); align-items: center;
+    gap: 8px 9px; padding: 2px 8px 8px; }
+  .adm-tilescroll .adm-tsc-grid:has(.mass-edit-checkbox) { grid-template-columns: minmax(0, max-content) minmax(0, 1fr) max-content; }
+  .adm-tilescroll .adm-sec { gap: 8px 9px; }
+  .adm-tilescroll .adm-sec > label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-tilescroll .adm-tsc-line { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .adm-tilescroll .adm-tsc-speed { flex: 0 1 72px; width: 72px; min-width: 40px; }
+  .adm-tilescroll .adm-tsc-move { position: relative; flex: none; width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%;
+    border: 1px solid var(--color-border-light-tertiary, #7a7971); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .adm-tilescroll .adm-tsc-move > input { position: absolute; width: 0; height: 0; margin: 0; opacity: 0; pointer-events: none; }
+  .adm-tilescroll .adm-tsc-move > i { font-size: 11px; }
+  .adm-tilescroll .adm-tsc-rot { display: flex; align-items: center; gap: 9px; margin-left: auto; min-width: 0; }
+  .adm-tilescroll .adm-tsc-rot[hidden] { display: none; }
+  .adm-tilescroll .adm-tsc-rot > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-tilescroll .adm-tsc-edge { flex: 0 1 140px; width: 140px; min-width: 60px; }
+  .adm-tilescroll .adm-tsc-line > range-picker { flex: 1 1 0; }`;
+
+/** «Pattern» (speed unit, pattern rotation), the motion button and the edge select, which writes the two saved
+ *  fields: «feather» (a straight edge needs it, the shapes imply it) and «edgeStyle». */
+function _wire(box, L) {
+  wireSpoiler(box, OPEN_KEY);
+  const world = box.querySelector(`[name="flags.${MODULE_ID}.${FLAG}.world"]`);
+  const speedLabel = box.querySelector("[data-adm-tilescroll-speed]");
+  const rot = box.querySelector(".adm-tsc-rot");   // pattern rotation works in «Pattern» only
+  world?.addEventListener("change", () => {
+    speedLabel.textContent = L(world.checked ? "speedPx" : "speed");
+    rot.hidden = !world.checked;
+  });
+  const move = box.querySelector(`[name="flags.${MODULE_ID}.${FLAG}.move"]`);
+  move?.addEventListener("change", () => { move.nextElementSibling.className = `fa-solid ${move.checked ? "fa-pause" : "fa-play"}`; });
+  const sel = box.querySelector(".adm-tsc-edge");
+  const feather = box.querySelector(`[name="flags.${MODULE_ID}.${FLAG}.feather"]`);
+  const style = box.querySelector(`[name="flags.${MODULE_ID}.${FLAG}.edgeStyle"]`);
+  const width = box.querySelector(`range-picker[name="flags.${MODULE_ID}.${FLAG}.featherWidth"]`);
+  sel?.addEventListener("change", () => {   // runs before the form reads the change
+    feather.value = String(sel.value !== "none");
+    style.value = (sel.value === "torn" || sel.value === "brush") ? sel.value : "";
+    width.disabled = sel.value === "none";
+  });
+}
+
 function _injectConfig(app, html) {
   const root = html instanceof HTMLElement ? html : (html?.[0] ?? html);
   if (!root?.querySelector) return;
   if (root.querySelector('[name="flags.adm-levels.tileScroll.enabled"]')) return; // already injected
 
   const f = _cfg(app.document);
-  const enabled = !!f.enabled;
   const world = !!f.world;
-  const patternRotation = Number(f.patternRotation) || 0;
-  const direction = Number(f.direction) || 0;
-  const speed = Number(f.speed) || 5;
   const move = f.move !== false;
-  const feather = !!f.feather;
-  const edgeStyle = ["", "torn", "brush"][_edgeStyle(f)];
+  const style = ["", "torn", "brush"][_edgeStyle(f)];
+  const edge = style || (f.feather ? "straight" : "none");   // the select: no edge / straight feathering / a shape
   const featherWidth = Number(f.featherWidth) || 0.12;
 
   const L = (k) => game.i18n.localize(`ADM_LEVELS.tileScroll.${k}`);
+  const nm = (k) => `flags.${MODULE_ID}.${FLAG}.${k}`;
+  const opt = (v, label) => `<option value="${v}"${edge === v ? " selected" : ""}>${label}</option>`;
   const injectHtml = `
-  <details class="adm-tilescroll" style="margin:6px 0;border:1px solid var(--color-border-light-tertiary,#7a7971);border-radius:4px;">
-    <summary style="cursor:pointer;padding:4px 8px;font-weight:bold;list-style:revert;">${L("title")}</summary>
-    <div style="padding:6px 8px 8px;">
-      <div class="form-group slim">
-        <label>${L("enabled")}</label>
-        <div class="form-fields">
-          <input type="checkbox" name="flags.adm-levels.tileScroll.enabled" ${enabled ? "checked" : ""}>
-        </div>
+  <details class="adm-spoiler adm-tilescroll"${spoilerOpen(OPEN_KEY) ? " open" : ""}>
+    <summary class="form-group"><input type="checkbox" name="${nm("enabled")}" aria-label="${L("enabled")}"${f.enabled ? " checked" : ""}>${L("title")}<label
+      class="adm-sp-right"><input type="checkbox" name="${nm("world")}"${world ? " checked" : ""}>${L("world")}</label></summary>
+    <style>${SPOILER_CSS}${CSS}</style>
+    <div class="adm-tsc-grid">
+      <div class="form-group adm-sec">
+      <label data-adm-tilescroll-speed>${L(world ? "speedPx" : "speed")}</label>
+      <div class="adm-tsc-line">
+        <input type="number" class="adm-tsc-speed" step="any" name="${nm("speed")}" value="${Number(f.speed) || 5}" placeholder="5">
+        <label class="adm-tsc-move"><input type="checkbox" name="${nm("move")}" aria-label="${L("moveHint")}"${move ? " checked" : ""}><i
+          class="fa-solid ${move ? "fa-pause" : "fa-play"}"></i></label>
+        ${dialHtml(nm("direction"), f.direction, L("direction"))}
+        <span class="adm-tsc-rot"${world ? "" : " hidden"}><span>${L("rotation")}</span>${dialHtml(nm("patternRotation"), f.patternRotation, L("patternRotation"))}</span>
       </div>
-      <div class="form-group slim">
-        <label data-tooltip="${L("worldHint")}">${L("world")}</label>
-        <div class="form-fields">
-          <input type="checkbox" name="flags.adm-levels.tileScroll.world" ${world ? "checked" : ""} data-tooltip="${L("worldHint")}">
-        </div>
       </div>
-      <div class="form-group slim" data-adm-tilescroll-rot style="${world ? "" : "display:none;"}">
-        <label data-tooltip="${L("patternRotationHint")}">${L("patternRotation")}</label>
-        <div class="form-fields">
-          <range-picker name="flags.adm-levels.tileScroll.patternRotation" value="${patternRotation}" min="-180" max="180" step="1"></range-picker>
-        </div>
+      <div class="form-group adm-sec">
+      <label>${L("edge")}</label>
+      <div class="adm-tsc-line">
+        <select class="adm-tsc-edge" aria-label="${L("edgeStyle")}">${opt("none", "—")}${opt("straight", L("edgeStraight"))}${opt("torn", L("edgeTorn"))}${opt("brush", L("edgeBrush"))}</select>
+        <input type="hidden" name="${nm("feather")}" value="${edge !== "none"}" data-dtype="Boolean">
+        <input type="hidden" name="${nm("edgeStyle")}" value="${style}">
+        <range-picker name="${nm("featherWidth")}" value="${featherWidth}" min="0.01" max="0.5" step="0.01"
+          aria-label="${L("featherWidthHint")}"${edge === "none" ? " disabled" : ""}></range-picker>
       </div>
-      <div class="form-group slim">
-        <label>${L("direction")}</label>
-        <div class="form-fields">
-          <input type="number" step="any" name="flags.adm-levels.tileScroll.direction" value="${direction}" placeholder="0">
-        </div>
-      </div>
-      <div class="form-group slim">
-        <label data-adm-tilescroll-speed>${L(world ? "speedPx" : "speed")}</label>
-        <div class="form-fields">
-          <input type="checkbox" name="flags.adm-levels.tileScroll.move" ${move ? "checked" : ""} data-tooltip="${L("moveHint")}">
-          <input type="number" step="any" name="flags.adm-levels.tileScroll.speed" value="${speed}" placeholder="5" style="width:64px;">
-        </div>
-      </div>
-      <div class="form-group slim">
-        <label>${L("feather")}</label>
-        <div class="form-fields">
-          <input type="checkbox" name="flags.adm-levels.tileScroll.feather" ${feather ? "checked" : ""}>
-          <input type="number" step="0.01" min="0.01" max="0.5" name="flags.adm-levels.tileScroll.featherWidth" value="${featherWidth}" style="width:64px;" title="${L("featherWidthHint")}">
-        </div>
-      </div>
-      <div class="form-group slim">
-        <label data-tooltip="${L("edgeStyleHint")}">${L("edgeStyle")}</label>
-        <div class="form-fields">
-          <select name="flags.adm-levels.tileScroll.edgeStyle" data-tooltip="${L("edgeStyleHint")}">
-            <option value="" ${edgeStyle === "" ? "selected" : ""}>${L("edgeStraight")}</option>
-            <option value="torn" ${edgeStyle === "torn" ? "selected" : ""}>${L("edgeTorn")}</option>
-            <option value="brush" ${edgeStyle === "brush" ? "selected" : ""}>${L("edgeBrush")}</option>
-          </select>
-        </div>
       </div>
     </div>
   </details>`;
@@ -421,15 +439,8 @@ function _injectConfig(app, html) {
     ?? root.querySelector(".form-group");
   if (anchor) anchor.insertAdjacentHTML("afterend", injectHtml);
   else root.insertAdjacentHTML("beforeend", injectHtml);
-  // «Pattern» switches the speed unit (tile fractions → pixels per second) — keep the label honest.
-  const worldBox = root.querySelector('[name="flags.adm-levels.tileScroll.world"]');
-  const speedLabel = root.querySelector("[data-adm-tilescroll-speed]");
-  const rotRow = root.querySelector("[data-adm-tilescroll-rot]");   // pattern rotation works in «Pattern» only
-  worldBox?.addEventListener("change", () => {
-    if (speedLabel) speedLabel.textContent = L(worldBox.checked ? "speedPx" : "speed");
-    if (rotRow) rotRow.style.display = worldBox.checked ? "" : "none";
-    try { app.setPosition({ height: "auto" }); } catch (_e) {}
-  });
+  const box = root.querySelector("details.adm-tilescroll");
+  if (box) _wire(box, L);
   try { app.setPosition({ height: "auto" }); } catch (_e) {}
 }
 

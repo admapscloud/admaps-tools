@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.7
+- Tile shadow and colour: a «Shadow and colour (ADMaps)» section in the tile config. A drop shadow cast by the tile's
+  picture — offset, blur, direction — and a contact shadow along its outline; a mask for the part of the picture that
+  casts it, and up to four edges that dissolve the picture into the map; «Shading» darkens the picture along a line
+  (a house painted on the map shading a prop next to it); brightness, contrast, saturation and warmth of the picture.
+  The direction can follow the scene's sun (a dial in the scene config's Lighting tab) or turn with the tile. A tile
+  that does not move draws its shadow once and reuses it.
+- Region texture: a new region type «Texture» fills the region with a picture whose edge dissolves into the map,
+  smooth or ragged — trampled clearings, paths, mud. Scale, strength, rotation, tint and edge width; the pattern is
+  tied to the scene, so neighbouring regions join seamlessly; holes are respected. The region's own hatching is hidden
+  so the picture shows as it will look. A texture region does not change elevation.
+- Proportional tile size: a chain button between Width and Height in the tile config — pressed, changing one size
+  changes the other in the same proportion.
+- Tile scroll: a more compact section — on/off and «Pattern» in its header; «Motion» is a play/pause button next to
+  the speed; the edge is one list (none, straight, torn, brush) with its width.
+- Import scenes from folder: moved from the Scenes list header to a scene's right-click menu, right after
+  «Import Data».
+
 ## 0.3.6
 - Stairs: a smooth height gradient under the arrow and the height labels, from the colour of the foot to the colour of
   the top — grey at the ground, green at 15 ft, yellow at 30, orange at 60, red at 120, blues below the ground. Every

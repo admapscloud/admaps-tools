@@ -39,6 +39,8 @@ The region config gets a type selector:
 - **Water** — a token below the surface switches to Swim movement.
 - **Transport** — a token inside ignores region effects; attach the region to a tile (a cart, a boat) with Mass Edit
   so it moves with it.
+- **Texture** — not a floor: the region is filled with a picture whose edge dissolves into the map, smooth or ragged
+  (trampled clearings, paths, mud) — scale, strength, rotation, tint and edge width.
 
 While moving, a token's elevation follows the floor under it: up the stairs, onto the plateau, down to the ground.
 A token dropped while a Levels floor is selected lands on that floor at the drop point. The whole feature can be
@@ -49,7 +51,7 @@ switched off with the **Elevation regions** setting.
 ### Scenes
 - **Scene variations** — switch between prepared takes on the same map (time of day, layout) from the scene menu;
   variations are read from JSON files next to the map.
-- **Import scenes from folder** — a button in the Scenes list: every scene export in a data folder and its subfolders
+- **Import scenes from folder** — in a scene's right-click menu in the Scenes list: every scene export in a data folder and its subfolders
   is imported as a separate scene, exactly like a manual «Import Data».
 - **Quick scene export** — saves the scene export straight into the folder with its background, no save dialog.
 - **Scene export name** — exported files are named after the background map instead of `fvtt-Scene-…`.
@@ -73,6 +75,10 @@ switched off with the **Elevation regions** setting.
 - **Tile auto-align** — puts a tile back where it sat on the original map by matching it against the background.
 - **Tile scroll** — animated texture scrolling with feathered edges; «Motion» freezes it in place and resumes it from the
   same spot, without a jump.
+- **Tile shadow and colour** — a drop shadow and a contact shadow cast by the tile's picture, masks for the part that
+  casts it and for edges dissolving into the map, shading along a line, and brightness, contrast, saturation and
+  warmth; the shadow can follow the scene's sun or turn with the tile.
+- **Proportional tile size** — a chain button between Width and Height keeps the tile's proportions.
 - **Video reanimator** — resumes WEBM videos on the canvas when they freeze.
 
 ### Doors and walls
