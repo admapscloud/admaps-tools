@@ -391,7 +391,7 @@
   "ADM_LEVELS.settings.updateNotice.name": "Avis de mise à jour",
   "ADM_LEVELS.settings.updateNotice.hint": "Quand une nouvelle version d’ADMaps Tools sort, le MJ voit une fenêtre au chargement : la version installée, la nouvelle et comment mettre à jour. « Ne plus afficher » la masque jusqu’à la version suivante.",
   "ADM_LEVELS.updateNotice.title": "ADMaps Tools : mise à jour disponible",
-  "ADM_LEVELS.updateNotice.body": "Une nouvelle version d’ADMaps Tools est sortie : {latest}. Version installée : {current}.",
+  "ADM_LEVELS.updateNotice.body": "Une nouvelle version d’ADMaps Tools est disponible : {latest} (actuelle : {current}).",
   "ADM_LEVELS.updateNotice.how": "Pour mettre à jour, revenez à l’accueil de Foundry, ouvrez « Modules » et mettez à jour ADMaps Tools.",
   "ADM_LEVELS.updateNotice.notes": "Nouveautés",
   "ADM_LEVELS.updateNotice.skip": "Ne plus afficher",

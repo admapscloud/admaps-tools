@@ -391,7 +391,7 @@
   "ADM_LEVELS.settings.updateNotice.name": "Сповіщення про оновлення",
   "ADM_LEVELS.settings.updateNotice.hint": "Коли виходить новіший реліз ADMaps Tools, ігромайстер під час завантаження бачить вікно: встановлена й нова версії та як оновитися. «Більше не показувати» ховає його до наступного релізу.",
   "ADM_LEVELS.updateNotice.title": "ADMaps Tools: доступне оновлення",
-  "ADM_LEVELS.updateNotice.body": "Вийшла нова версія ADMaps Tools: {latest}. У вас встановлено {current}.",
+  "ADM_LEVELS.updateNotice.body": "Доступна нова версія ADMaps Tools: {latest} (поточна: {current}).",
   "ADM_LEVELS.updateNotice.how": "Щоб оновити, натисніть «Повернутися до налаштувань», відкрийте «Додаткові модулі» й оновіть ADMaps Tools.",
   "ADM_LEVELS.updateNotice.notes": "Що нового",
   "ADM_LEVELS.updateNotice.skip": "Більше не показувати",

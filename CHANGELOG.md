@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.8
+- Update notice: the window now reads «A new version of ADMaps Tools is available: X (current: Y).» in every language.
+
 ## 0.3.7
 - Tile shadow and colour: a «Shadow and colour (ADMaps)» section in the tile config. A drop shadow cast by the tile's
   picture — offset, blur, direction — and a contact shadow along its outline; a mask for the part of the picture that

@@ -391,7 +391,7 @@
   "ADM_LEVELS.settings.updateNotice.name": "Aviso de actualización",
   "ADM_LEVELS.settings.updateNotice.hint": "Cuando sale una versión nueva de ADMaps Tools, el GM ve una ventana al cargar: la versión instalada, la nueva y cómo actualizar. «No volver a mostrar» la oculta hasta la siguiente versión.",
   "ADM_LEVELS.updateNotice.title": "ADMaps Tools: actualización disponible",
-  "ADM_LEVELS.updateNotice.body": "Hay una nueva versión de ADMaps Tools: {latest}. Tienes instalada la {current}.",
+  "ADM_LEVELS.updateNotice.body": "Hay una nueva versión de ADMaps Tools disponible: {latest} (actual: {current}).",
   "ADM_LEVELS.updateNotice.how": "Para actualizar, vuelve a la configuración, abre «Módulos» y actualiza ADMaps Tools.",
   "ADM_LEVELS.updateNotice.notes": "Novedades",
   "ADM_LEVELS.updateNotice.skip": "No volver a mostrar",

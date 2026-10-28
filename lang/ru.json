@@ -391,7 +391,7 @@
   "ADM_LEVELS.settings.updateNotice.name": "Окно об обновлении",
   "ADM_LEVELS.settings.updateNotice.hint": "Когда выходит новая версия ADMaps Tools, ГМ при загрузке видит окно: какая версия стоит, какая вышла и как обновиться. «Не показывать больше» скрывает окно до следующей версии.",
   "ADM_LEVELS.updateNotice.title": "ADMaps Tools: вышло обновление",
-  "ADM_LEVELS.updateNotice.body": "Вышла новая версия ADMaps Tools: {latest}. У вас стоит {current}.",
+  "ADM_LEVELS.updateNotice.body": "Доступна новая версия ADMaps Tools: {latest} (текущая: {current}).",
   "ADM_LEVELS.updateNotice.how": "Чтобы обновиться, выйдите в меню Setup, откройте модули и обновите ADMaps Tools.",
   "ADM_LEVELS.updateNotice.notes": "Что нового",
   "ADM_LEVELS.updateNotice.skip": "Не показывать больше",

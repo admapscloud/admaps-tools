@@ -391,7 +391,7 @@
   "ADM_LEVELS.settings.updateNotice.name": "アップデートのお知らせ",
   "ADM_LEVELS.settings.updateNotice.hint": "ADMaps Tools の新しいリリースが公開されると、読み込み時にGMにウィンドウを表示します：インストール済みのバージョン、新しいバージョン、アップデートの方法。「今後表示しない」を押すと、次のリリースまで表示されません。",
   "ADM_LEVELS.updateNotice.title": "ADMaps Tools：アップデートがあります",
-  "ADM_LEVELS.updateNotice.body": "ADMaps Tools の新しいバージョン {latest} が公開されました。現在のバージョンは {current} です。",
+  "ADM_LEVELS.updateNotice.body": "ADMaps Tools の新しいバージョンが利用可能です：{latest}（現在：{current}）。",
   "ADM_LEVELS.updateNotice.how": "アップデートするには、セットアップ画面に戻り、「モッド・拡張機能」を開いて ADMaps Tools をアップデートしてください。",
   "ADM_LEVELS.updateNotice.notes": "更新内容",
   "ADM_LEVELS.updateNotice.skip": "今後表示しない",

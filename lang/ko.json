@@ -391,7 +391,7 @@
   "ADM_LEVELS.settings.updateNotice.name": "업데이트 알림",
   "ADM_LEVELS.settings.updateNotice.hint": "ADMaps Tools의 새 릴리스가 나오면, 월드를 불러올 때 GM에게 창이 뜹니다: 설치된 버전과 새 버전, 업데이트 방법을 알려 줍니다. '다시 표시 안 함'을 누르면 다음 릴리스까지 숨깁니다.",
   "ADM_LEVELS.updateNotice.title": "ADMaps Tools: 업데이트 가능",
-  "ADM_LEVELS.updateNotice.body": "ADMaps Tools 새 버전이 나왔습니다: {latest}. 현재 버전은 {current}입니다.",
+  "ADM_LEVELS.updateNotice.body": "ADMaps Tools 새 버전을 사용할 수 있습니다: {latest} (현재: {current}).",
   "ADM_LEVELS.updateNotice.how": "업데이트하려면 셋업 화면으로 돌아가 '부가 모듈'을 열고 ADMaps Tools를 업데이트하세요.",
   "ADM_LEVELS.updateNotice.notes": "새로운 기능",
   "ADM_LEVELS.updateNotice.skip": "다시 표시 안 함",
