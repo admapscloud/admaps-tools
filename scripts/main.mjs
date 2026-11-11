@@ -2707,6 +2707,23 @@ Hooks.on("renderWallConfig", (app, htmlOrEl) => {
 
 // Expose for system distance/movement calculations.
 globalThis.__admLevelsElevAtXY = function(px, py, tokenElev) { return _elevationAtXY(px, py, tokenElev); };
+/**
+ * Elevation a WALKER ends up at after one step A→B (token centres), starting at z0 — the same rule the movement
+ * planner applies to walk waypoints (_walkArrival + the walk branch below): carried up ramps onto roofs, off a
+ * floor down to 0, into sunken water down to its surface. For tools that must agree with the ruler's 3D cost
+ * (the system's reachable-cells highlight, 11.11.2026: a 15 ft tower read as "close" there, "far" on the ruler).
+ */
+globalThis.__admLevelsWalkStep = function(ax, ay, bx, by, z0) {
+  const gs = Number(canvas.grid?.size) || 100;
+  const z = Number(z0) || 0;
+  if (!_regionsOn()) return z;
+  const arrive = _walkArrival(ax, ay, bx, by, z, gs);
+  const r = _elevationAtXY(bx, by, arrive);
+  if (r !== null) return r;
+  const surf = _waterSurfaceAtXY(bx, by);
+  if (surf !== null) return (z > surf) ? surf : z;
+  return _wasInElevationRegion(z) ? 0 : z;
+};
 // Expose water detection for system (swim status + movement swap).
 globalThis.__admWaterAtXY = function(px, py, tokenElev) { return _waterAtXY(px, py, tokenElev); };
 

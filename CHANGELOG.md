@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.9
+- A new function for systems and modules, `globalThis.__admLevelsWalkStep(ax, ay, bx, by, z)`: the elevation a walking
+  token ends up at after one step — the same rule the movement ruler uses (up the stairs onto a roof, off a floor down
+  to the ground, into sunken water down to its surface). With it, a movement range highlight can count climbing the
+  way the ruler does.
+
 ## 0.3.8
 - Update notice: the window now reads «A new version of ADMaps Tools is available: X (current: Y).» in every language.
 
